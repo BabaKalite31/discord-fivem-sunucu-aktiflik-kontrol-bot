@@ -3,7 +3,7 @@ const Gamedig = require('gamedig');
 
 const client = new Discord.Client({ intents: [Discord.Intents.FLAGS.GUILDS, Discord.Intents.FLAGS.GUILD_MESSAGES] });
 
-const token = 'MTExNjE0NDI0MDkzNDc4OTEzMw.GtAO9W.ZQCFguFCQB6ASPQKM6fMSOMq50JcMqDwtq5o8c'; //Token Buraya
+const token = ''; //Token Buraya
 
 // sunucu port vb start
 
