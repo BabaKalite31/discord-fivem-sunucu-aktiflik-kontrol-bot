@@ -1,146 +1,167 @@
-const { Client, MessageButton, MessageEmbed, Intents } = require('discord.js');
+const Discord = require('discord.js');
+const Gamedig = require('gamedig');
+
+const client = new Discord.Client({ intents: [Discord.Intents.FLAGS.GUILDS, Discord.Intents.FLAGS.GUILD_MESSAGES] });
 
 const token = 'MTExNjE0NDI0MDkzNDc4OTEzMw.GtAO9W.ZQCFguFCQB6ASPQKM6fMSOMq50JcMqDwtq5o8c'; //Token Buraya
-const categoryId = '1105574705861230653'; //Ticket Kanaların Oluşucağı Katagori id
-const allowedRoleId = '1104438082125701120'; //Ticket Ları Görebilicek Rol İd
-const adminRoleId = '1107064783297064980'; //Sunucudaki Admin Rol İd
 
-const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES] });
+// sunucu port vb start
 
+let serverStatus = {
+    serverIP: '11.111.11.111', //İp 
+    serverPort: 30120, // Port
+    players: null, // Değer null olarak kalıcak
+    maxPlayers: null, // Değer null olarak kalıcak
+    ping: null // Değer null olarak kalıcak
+};
 
+let serverMessage = null;
 
-client.on('ready', () => {
-    console.log(` Bot Başaralıyla Giriş Yaptı`);
-    client.user.setPresence({
-        status: 'dnd', // Rahatsız Etmeyin 
-        activities: [{ name: 'Ticketları', type: 'WATCHING' }], //Aktivite 
-    });
+// sunucu port vb end
 
+//Bot Giriş Yap start
+
+client.on('ready', async() => {
+    console.log(`Bot Başarıyla Giriş Yaptı ${client.user.tag}`);
+    checkServerStatus();
+    setInterval(checkServerStatus, 5000);
+
+    const channelID = 'Kanal İD'; // Bot 0 Dan Başlayınca Önceki Kontrol Mesajlarını Sil
+    const channel = await client.channels.fetch(channelID);
+    if (channel.isText()) {
+        const messages = await channel.messages.fetch({ limit: 100 });
+        channel.bulkDelete(messages);
+    }
 });
 
-//.ticket Komutu 
+//Bot Giriş Yap End
 
-let ticketCount = 0;
+//Sunucuya Hızlı Giriş İçin !ip Komutu start
 
 client.on('messageCreate', async(message) => {
-    if (message.content.toLowerCase() === '.ticket') {
-        const button = new MessageButton()
-            .setCustomId('create_ticket')
-            .setLabel('Ticket Oluştur')
-            .setStyle('PRIMARY');
+    if (message.content === '!ip') {
+        const embed = new Discord.MessageEmbed()
+            .setColor('#0000FF')
+            .setTitle('Server İp Hızlı Giriş Linki')
+            .setDescription(`First Rp Fivem Sunucusuna Hızlı Bağlanmak İçin Aşağıdaki Butona Tıklayın.`)
+            .setFooter('First Rp Server', client.user.avatarURL());
 
-        const embed = new MessageEmbed()
-            .setColor('PRIMARY')
-            .setTitle('Kedicik Ticket Sistemi')
-            .setDescription('Ticket oluşturmak için aşağıdaki butona tıklayın:')
-            .setFooter('Dev By function checkServerStatus#3027');
-        embed.setThumbnail('https://cdn.discordapp.com/attachments/1104412013666500630/1116121831942918235/attachment_115998183.png');
-        message.channel.send({
-            embeds: [embed],
-            components: [{ type: 'ACTION_ROW', components: [button] }],
-        });
-    }
-})
+        const button = new Discord.MessageButton()
+            .setLabel('Sunucuya Bağlan')
+            .setURL(`http://${serverStatus.serverIP}:${serverStatus.serverPort}`)
+            .setStyle('LINK');
 
-client.on('interactionCreate', async(interaction) => {
-    if (!interaction.isButton()) return;
+        embed.setThumbnail('https://thumbs.dreamstime.com/b/dreamstime-187819349.jpg'); // Resmin linkini buraya girin
 
-    if (interaction.customId === 'create_ticket') {
-        const member = interaction.member;
-        if (!member) return;
-
-        const guild = interaction.guild;
-        if (!guild) return;
-
-        const category = guild.channels.cache.get(categoryId);
-        if (!category || category.type !== 'GUILD_CATEGORY') return;
-
-        const allowedRole = guild.roles.cache.get(allowedRoleId);
-        if (!allowedRole) return;
-
-        const adminRole = guild.roles.cache.get(adminRoleId);
-        if (!adminRole) return;
-
-        ticketCount++;
-        const ticketChannelName = `ticket-${ticketCount}`;
-
-        guild.channels
-            .create(ticketChannelName, {
-                type: 'GUILD_TEXT',
-                parent: category,
-                permissionOverwrites: [{
-                        id: guild.roles.everyone.id,
-                        deny: ['VIEW_CHANNEL'],
-                    },
-                    {
-                        id: member.id,
-                        allow: ['VIEW_CHANNEL'],
-                    },
-                    {
-                        id: allowedRole.id,
-                        allow: ['VIEW_CHANNEL'],
-                    },
-                    {
-                        id: adminRole.id,
-                        allow: ['VIEW_CHANNEL', 'SEND_MESSAGES', 'ATTACH_FILES', 'EMBED_LINKS'],
-                    },
-                ],
-            })
-            .then((channel) => {
-                const closeButton = new MessageButton()
-                    .setCustomId('close_ticket')
-                    .setLabel('Ticketı Kapat')
-                    .setStyle('DANGER');
-
-                const embed = new MessageEmbed()
-                    .setColor('#FF0000')
-                    .setTitle('Yeni Ticket')
-                    .setDescription(`Ticket oluşturan kullanıcı: ${member}`)
-                    .setFooter('Ticket Oluşturuldu');
-                embed.setThumbnail('https://cdn.discordapp.com/attachments/1104412013666500630/1116121831942918235/attachment_115998183.png');
-                channel.send({
-                    content: `<@${member.id}>`,
-                    embeds: [embed],
-                    components: [{ type: 'ACTION_ROW', components: [closeButton] }],
-                });
-
-                interaction.reply({
-                    content: `Ticket oluşturuldu: ${channel}`,
-                    ephemeral: true,
-                });
-            })
-            .catch((error) => {
-                console.error('Ticket oluşturulurken bir hata oluştu:', error);
-                interaction.reply({
-                    content: 'Ticket oluşturulurken bir hata oluştu.',
-                    ephemeral: true,
-                });
-            });
-    } else if (interaction.customId === 'close_ticket') {
-        const channel = interaction.channel;
-        if (!channel) return;
-
-        channel.delete().catch((error) => {
-            console.error('Ticket kapatılırken bir hata oluştu:', error);
-            interaction.reply({
-                content: 'Ticket kapatılırken bir hata oluştu.',
-                ephemeral: true,
-            });
-        });
+        message.channel.send({ embeds: [embed], components: [{ type: 1, components: [button] }] })
+            .catch((error) => console.error('Mesaj gönderilirken bir hata oluştu:', error));
     }
 });
 
-// Botu Bir Ses Kanalına Sok
+//Sunucuya Hızlı Giriş İçin !ip Komutu end
+
+// Fivem Sunucusu Kontrol Response start
+
+function checkServerStatus() {
+    Gamedig.query({
+            type: 'fivem',
+            host: serverStatus.serverIP,
+            port: serverStatus.serverPort,
+        })
+        .then((server) => {
+            if (!serverStatus.players) {
+                console.log('Sunucu aktif oldu!');
+            }
+
+            serverStatus.players = server.players.length;
+            serverStatus.maxPlayers = server.maxplayers;
+            serverStatus.ping = server.ping;
+
+            const activity = `Oyuncu Sayısı: ${serverStatus.players} / Sunucu Durumu: Aktif`;
+            client.user.setActivity(activity, { type: 'PLAYING' });
+
+            const embed = new Discord.MessageEmbed()
+                .setColor('#00FF00')
+                .setTitle('First Rp Sunucu Durumu')
+                .setDescription('Sunucu aktif ve online iyi oyunlar dileriz.')
+                .setFooter('First Rp Server', client.user.avatarURL());
+
+            if (serverStatus.players !== null && serverStatus.maxPlayers !== null) {
+                embed.addField('Oyuncu Sayısı', `${serverStatus.players}/${serverStatus.maxPlayers}`, true);
+            } else {
+                embed.addField('Oyuncu Sayısı', 'Bilinmiyor', true);
+            }
+
+            if (serverStatus.ping !== null) {
+                embed.addField('Ping', `${serverStatus.ping} ms`, true);
+            } else {
+                embed.addField('Ping', 'Bilinmiyor', true);
+            }
+            embed.setThumbnail('https://thumbs.dreamstime.com/b/dreamstime-187819349.jpg'); // Resmin linkini buraya girin
+            if (serverMessage) {
+                serverMessage.edit({ embeds: [embed] });
+            } else {
+                client.channels.fetch('1113932158038442044') // Discord kanalının ID'sini buraya girin
+                    .then((channel) => {
+                        channel.send({ embeds: [embed] })
+                            .then((sentMessage) => {
+                                serverMessage = sentMessage;
+                                console.log('Sunucu durumu mesajı gönderildi.');
+                            })
+                            .catch((error) => console.error('Mesaj gönderilirken bir hata oluştu:', error));
+                    })
+                    .catch((error) => console.error('Kanal bulunamadı:', error));
+            }
+        })
+        .catch((error) => {
+            console.error('Sunucu durumu alınırken bir hata oluştu:', error);
+
+            serverStatus.players = null;
+            serverStatus.maxPlayers = null;
+            serverStatus.ping = null;
+            client.user.setActivity('Sunucu Çevrimdışı', { type: 'PLAYING' });
+
+            const embed = new Discord.MessageEmbed()
+                .setColor('#FF0000')
+                .setTitle('First Rp Sunucu Durumu')
+                .setDescription('Sunucu çevrimdışı veya erişilemez durumda.')
+                .setFooter('First Rp Server', client.user.avatarURL())
+                .setThumbnail('https://thumbs.dreamstime.com/b/dreamstime-187819349.jpg'); // Resmin linkini buraya girin
+
+            if (serverMessage) {
+                serverMessage.edit({ embeds: [embed] });
+            } else {
+                client.channels.fetch('Kanal id') // Discord kanalının ID'sini buraya girin
+                    .then((channel) => {
+                        channel.send({ embeds: [embed] })
+                            .then((sentMessage) => {
+                                serverMessage = sentMessage;
+                                console.log('Sunucu durumu mesajı gönderildi.');
+                            })
+                            .catch((error) => console.error('Mesaj gönderilirken bir hata oluştu:', error));
+                    })
+                    .catch((error) => console.error('Kanal bulunamadı:', error));
+            }
+
+            console.log('Sunucu Çevrimdışı');
+        });
+}
+
+// Fivem Sunucusu Kontrol Response end
+
+
+//Botu Sese Sok start 
 
 const { joinVoiceChannel } = require('@discordjs/voice');
 client.on('ready', () => {
     joinVoiceChannel({
-        channelId: "1107347629324640390", //Bağlanıcak Kanal İd
-        guildId: "1104139398003560488", //Kanalın Olduğu Sunucu İd    
-        adapterCreator: client.guilds.cache.get("1104139398003560488").voiceAdapterCreator //Kanalın Olduğu Sunucu İd   
+        channelId: "1113931698313363507",
+        guildId: "929434654086414336",
+        adapterCreator: client.guilds.cache.get("929434654086414336").voiceAdapterCreator
     });
 });
 
-// Giriş Yap
+//Botu Sese Sok End
 
-client.login(token);
+
+client.login(token); //Giriş Yap
